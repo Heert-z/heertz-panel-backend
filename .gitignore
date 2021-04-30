@@ -1,0 +1,9 @@
+config/*.prod.js
+yarn.lock
+yarn-error.log
+
+node_modules
+
+.idea
+
+dist/
