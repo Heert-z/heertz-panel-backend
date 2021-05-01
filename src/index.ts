@@ -25,7 +25,6 @@ import c from './utils/ansi-colors.js'
 import { Route, RouteType } from './utils/route.js'
 import Database from './utils/database/database.js'
 import { Terminal } from './utils/terminal.js'
-import { DiscordTokenManager } from './utils/database/models/discord-token.js'
 
 // Initialize the logger
 const filePath = import.meta.url.split('/')
@@ -35,7 +34,7 @@ const term = new Terminal(fileName)
 
 // Connect to the database
 export const database = new Database()
-await database.connect()
+database.connect().then()
 
 while (!database.isConnected()) {
 }
@@ -49,15 +48,17 @@ const router = express.Router({
   caseSensitive: false
 })
 
-await registerRoutes()
-term.info('All routes have been registered !')
+registerRoutes()
+  .then(() => {
+    term.info('All routes have been registered !')
 
-app.use('/api/v1', router)
+    app.use('/api/v1', router)
 
-const port = config.backend.port || 5972
-app.listen(port, () => {
-  term.info(`Server started on port ${port} !`)
-})
+    const port = config.backend.port || 5972
+    app.listen(port, () => {
+      term.info(`Server started on port ${port} !`)
+    })
+  })
 
 async function registerRoutes () {
   await registerRoute('./routes')

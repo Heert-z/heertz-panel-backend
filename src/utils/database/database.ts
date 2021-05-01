@@ -60,7 +60,6 @@ export default class Database {
   }
 
   async setup () {
-    term.debug(DiscordTokenManager.INSTANCE)
     await DiscordTokenManager.INSTANCE.createTable()
   }
 

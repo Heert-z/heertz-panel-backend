@@ -25,6 +25,6 @@ export default {
     url: '',
     port: 0
   },
-  clientId: 0,
+  clientId: '',
   clientSecret: ''
 }

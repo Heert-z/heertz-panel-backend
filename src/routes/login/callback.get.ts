@@ -22,16 +22,16 @@ import { response } from 'express'
 import { oauth } from './login.get.js'
 import { DiscordTokenManager } from '../../utils/database/models/discord-token.js'
 
-export default class LoginGet extends Route {
-  uuidv4 () {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
-      .replace(/[xy]/g, function (c) {
-        const r = Math.random() * 16 | 0,
-          v = c == 'x' ? r : (r & 0x3 | 0x8)
-        return v.toString(16)
-      })
-  }
+function uuidv4 () {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
+    .replace(/[xy]/g, function (c) {
+      const r = Math.random() * 16 | 0,
+        v = c == 'x' ? r : (r & 0x3 | 0x8)
+      return v.toString(16)
+    })
+}
 
+export default class LoginGet extends Route {
   infos (): RouteInfos {
     return {
       prefixed: false,
@@ -53,23 +53,29 @@ export default class LoginGet extends Route {
       const token = await oauth.tokenRequest({
         grantType: 'authorization_code',
         scope: ['guilds', 'identify', 'email', 'connections', 'guilds.join'],
-        code: req.query.code
+        code: req.query.code,
       })
       let tokens = {
-        clientLoginToken: this.uuidv4(),
+        clientLoginToken: uuidv4(),
         discordRefreshToken: token.refresh_token,
         discordAccessToken: token.access_token
       }
 
-      // await DiscordTokenManager.INSTANCE.create(tokens)
-
       res.redirect(
-        `${config.frontend.url}:${config.frontend.port || 80}/tokenset/` +
+        `${config.frontend.url}:${config.frontend.port || 80}/tokenset?code=` +
         `${tokens.clientLoginToken}`,
       )
     } catch (e) {
+      console.error(e)
       res.status(500)
-        .send(e)
+        .send({
+          status: 500,
+          message: 'An error occurred while trying to fetch the access and the refresh token',
+          error: {
+            type: e.name,
+            message: e.message,
+          }
+        })
     }
   }
 }

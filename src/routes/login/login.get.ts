@@ -23,7 +23,8 @@ import config from '../../../config/config.prod.js'
 export const oauth = new DiscordOauth2({
   clientId: config.clientId,
   clientSecret: config.clientSecret,
-  redirectUri: `${config.backend.url}:${config.backend.port || 5972}/login/callback`
+  redirectUri: `http://redstom.freeboxos.fr:5972/login/callback`,
+  version: 'v8'
 })
 
 export default class LoginGet extends Route {

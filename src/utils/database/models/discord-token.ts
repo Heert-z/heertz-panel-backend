@@ -38,9 +38,8 @@ export class DiscordTokenManager extends Model<DiscordToken> {
 
   async create (token: DiscordToken): Promise<DiscordToken> {
     try {
-      term.debug('a')
       await database.database.query(
-        `INSERT INTO DiscordTokens(clientLoginToken, discordRefreshToken, discordAccessToken)
+        `INSERT INTO discordtokens(clientLoginToken, discordRefreshToken, discordAccessToken)
          VALUES ($1, $2, $3)`,
         [
           token.clientLoginToken,
@@ -48,7 +47,6 @@ export class DiscordTokenManager extends Model<DiscordToken> {
           token.discordAccessToken
         ]
       )
-      term.debug("b")
     } catch (e) {
       term.error(e);
     }
@@ -57,7 +55,7 @@ export class DiscordTokenManager extends Model<DiscordToken> {
 
   async createTable () {
     await database.database.query(
-      `CREATE TABLE IF NOT EXISTS DiscordTokens
+      `CREATE TABLE IF NOT EXISTS discordtokens
        (
            clientLoginToken VARCHAR UNIQUE PRIMARY KEY NOT NULL DEFAULT '',
            discordRefreshToken VARCHAR NOT NULL DEFAULT '',
@@ -66,7 +64,22 @@ export class DiscordTokenManager extends Model<DiscordToken> {
     )
   }
 
+  async getByClientLoginCookie (clientLoginToken: string): Promise<DiscordToken> {
+    const resp = await database.database.query(
+      'SELECT * FROM discordtokens WHERE clientlogintoken=?',
+      [clientLoginToken]
+    )
+    if(resp.rowCount < 1) {
+      return null;
+    }
+    return {
+      clientLoginToken: resp.rows[0].clientLoginToken,
+      discordAccessToken: resp.rows[0].discordAccessToken,
+      discordRefreshToken: resp.rows[0].discordRefreshToken
+    }
+  }
+
   async dropTable () {
-    await database.database.query(`DROP TABLE IF EXISTS DiscordTokens`)
+    await database.database.query(`DROP TABLE IF EXISTS discordtokens`)
   }
 }
