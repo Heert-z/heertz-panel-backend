@@ -19,6 +19,7 @@
 import express from 'express'
 import bodyParser from 'body-parser'
 import fs from 'fs'
+import cors from 'cors'
 
 import config from '../config/config.prod.js'
 import c from './utils/ansi-colors.js'
@@ -34,12 +35,15 @@ const term = new Terminal(fileName)
 
 // Connect to the database
 export const database = new Database()
-database.connect().then()
+database.connect()
+  .then()
 
 while (!database.isConnected()) {
 }
 
 export const app = express()
+
+app.use(cors())
 
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
@@ -97,6 +101,10 @@ async function registerRoute (folder) {
     }
     const infos = route.infos()
 
+    function register (to, infos, route) {
+      to.route(infos.route)[infos.type || RouteType.Get](route.run)
+    }
+
     // Register the route
     if (infos.prefixed === undefined ? true : infos.prefixed) {
       term.info(
@@ -104,14 +112,14 @@ async function registerRoute (folder) {
         `${c.cyan}${infos.type.toUpperCase()} /api/v1${infos.route}${c.reset} ` +
         `in file ${c.yellow}${folder}/${file}`
       )
-      router.route(infos.route)[infos.type || RouteType.Get](route.run)
+      register(router, infos, route)
     } else {
       term.info(
         `Registered ${c.magenta}route${c.reset} ` +
         `${c.cyan}${infos.type.toUpperCase()} ${infos.route}${c.reset} ` +
         `in file ${c.yellow}${folder}/${file}`
       )
-      app.route(infos.route)[infos.type || RouteType.Get](route.run)
+      register(app, infos, route)
     }
   }
 }

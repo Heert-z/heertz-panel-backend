@@ -47,6 +47,7 @@ export default class LoginGet extends Route {
           status: 400,
           message: 'Please precise an OAuth2 code.'
         })
+      return
     }
 
     try {
@@ -60,6 +61,7 @@ export default class LoginGet extends Route {
         discordRefreshToken: token.refresh_token,
         discordAccessToken: token.access_token
       }
+      await DiscordTokenManager.INSTANCE.create(tokens)
 
       res.redirect(
         `${config.frontend.url}:${config.frontend.port || 80}/tokenset?code=` +

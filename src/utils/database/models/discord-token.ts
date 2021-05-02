@@ -19,6 +19,8 @@
 import { database } from '../../../index.js'
 import Model from './model.js'
 import { Terminal } from '../../terminal.js'
+import { oauth } from '../../../routes/login/login.get.js'
+import express from 'express'
 
 // Initialize the logger
 const filePath = import.meta.url.split('/')
@@ -48,7 +50,7 @@ export class DiscordTokenManager extends Model<DiscordToken> {
         ]
       )
     } catch (e) {
-      term.error(e);
+      term.error(e)
     }
     return token
   }
@@ -57,29 +59,83 @@ export class DiscordTokenManager extends Model<DiscordToken> {
     await database.database.query(
       `CREATE TABLE IF NOT EXISTS discordtokens
        (
-           clientLoginToken VARCHAR UNIQUE PRIMARY KEY NOT NULL DEFAULT '',
-           discordRefreshToken VARCHAR NOT NULL DEFAULT '',
-           discordAccessToken VARCHAR NOT NULL DEFAULT ''
+           clientLoginToken
+           VARCHAR
+           UNIQUE
+           PRIMARY
+           KEY
+           NOT
+           NULL
+           DEFAULT
+           '',
+           discordRefreshToken
+           VARCHAR
+           NOT
+           NULL
+           DEFAULT
+           '',
+           discordAccessToken
+           VARCHAR
+           NOT
+           NULL
+           DEFAULT
+           ''
        );`
+    )
+  }
+
+  async update (clientLoginToken: string, tk: DiscordToken): Promise<void> {
+    const resp = await database.database.query(
+      `UPDATE discordtokens
+       SET clientlogintoken    = $1,
+           discordaccesstoken  = $2,
+           discordrefreshtoken = $3
+       WHERE clientlogintoken = $1`, [
+        tk.clientLoginToken,
+        tk.discordAccessToken,
+        tk.discordRefreshToken
+      ]
     )
   }
 
   async getByClientLoginCookie (clientLoginToken: string): Promise<DiscordToken> {
     const resp = await database.database.query(
-      'SELECT * FROM discordtokens WHERE clientlogintoken=?',
+      'SELECT * FROM discordtokens WHERE clientlogintoken=$1',
       [clientLoginToken]
     )
-    if(resp.rowCount < 1) {
-      return null;
+    if (resp.rowCount < 1) {
+      return null
     }
     return {
-      clientLoginToken: resp.rows[0].clientLoginToken,
-      discordAccessToken: resp.rows[0].discordAccessToken,
-      discordRefreshToken: resp.rows[0].discordRefreshToken
+      clientLoginToken: resp.rows[0].clientlogintoken,
+      discordAccessToken: resp.rows[0].discordaccesstoken,
+      discordRefreshToken: resp.rows[0].discordrefreshtoken
     }
   }
 
   async dropTable () {
     await database.database.query(`DROP TABLE IF EXISTS discordtokens`)
+  }
+
+  async refreshToken (discordToken: DiscordToken, res: express.Response): Promise<boolean> {
+    try {
+      const accessToken = await oauth.tokenRequest({
+        refreshToken: discordToken.discordRefreshToken,
+        grantType: 'refresh_token',
+        scope: ''
+      })
+      discordToken.discordAccessToken = accessToken.access_token
+      discordToken.discordRefreshToken = accessToken.refresh_token
+      await DiscordTokenManager.INSTANCE.update(discordToken.clientLoginToken, discordToken)
+      return true
+    } catch (e) {
+      res.status(500)
+        .send({
+          status: 500,
+          message: 'Cannot refresh the access token ! The refresh token in DB may ' +
+            'be invalid. Please re-generate a client login cookie to fix this error !'
+        })
+      return false
+    }
   }
 }

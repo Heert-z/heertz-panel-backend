@@ -18,28 +18,49 @@
 
 import { Route, RouteInfos, RouteType } from '../../utils/route.js'
 import { DiscordTokenManager } from '../../utils/database/models/discord-token.js'
+import { oauth } from '../login/login.get.js'
 
 export default class InfosGet extends Route {
 
   infos (): RouteInfos {
     return {
       type: RouteType.Get,
-      route: '/users/get'
+      route: '/user'
     }
   }
 
   async run (req, res): Promise<void> {
-    if (!req.headers['Authorization']) {
+    if (!req.headers.authorization) {
       res.status(401)
         .send({
           status: 401,
           message: 'Please provide the authentication token in the headers'
         })
+      return
     }
 
-    const discordToken = DiscordTokenManager.INSTANCE
-      .getByClientLoginCookie(req.headers['Authorization'])
-    res.send(discordToken)
-  }
+    const discordToken = await DiscordTokenManager.INSTANCE
+      .getByClientLoginCookie(req.headers.authorization)
 
+    if (!discordToken) {
+      res.status(401)
+        .send({
+          status: 401,
+          message: 'The precised client login cookie is not linked to any user !'
+        })
+      return
+    }
+    oauth.getUser(discordToken.discordAccessToken)
+      .then(user => {
+        res.send(user)
+      })
+      .catch(async error => {
+        if (await DiscordTokenManager.INSTANCE.refreshToken(discordToken, res)) {
+          oauth.getUser(discordToken.discordAccessToken)
+            .then(user => {
+              res.send(user)
+            })
+        }
+      })
+  }
 }
